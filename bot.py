@@ -17,6 +17,7 @@ PSEUDOS = ["Kaïs_77","lunarix","xX_Maël_Xx","Zéphyr 🔥","naya.shop","Aleex_
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 BRAND = {"etsy": ("Etsy", 0xF1641E), "ebay": ("eBay", 0x0064D2)}
 STATE = "sent.json"
+DELAY_MAX = int(os.environ.get("DELAY_MAX", "420"))   # délai aléatoire (secondes) avant chaque envoi
 MAX_PER_RUN = 1                                 # 1 seul message par lancement : jamais deux d'un coup
 
 def plan_for(day):
@@ -117,8 +118,7 @@ def main():
                 state[s["id"]] = "skipped"; continue
             if sent_now >= MAX_PER_RUN:
                 break                                          # le reste partira au prochain lancement
-            if sent_now:
-                import time; time.sleep(random.uniform(8, 20))  # petite pause entre 2 messages
+            import time; time.sleep(random.uniform(0, DELAY_MAX))  # moment d'envoi aléatoire dans la tranche
             send(s, dt.datetime.now(TZ)); state[s["id"]] = "sent"; sent_now += 1; print("envoyé", s["id"])
     json.dump(state, open(STATE, "w"))
 
