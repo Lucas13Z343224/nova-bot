@@ -9,8 +9,11 @@ MODE = os.environ.get("MODE", "test")          # test = ventes simulées
 MIN_SALES, MAX_SALES = 40, 60
 DAY_START, DAY_END = 8, 23                      # heures d'activité
 AMOUNTS = [19, 24, 29, 30, 35, 39, 45, 49, 55, 59, 65, 79, 89, 99]
-PSEUDOS = ["armen69","marc","Lahuiss","MTS","theo_sells","julie.vnt","kev44","leaPro","sam_dropship",
-           "nico13","inesLM","bastien_r","clem.shop","yanis07","mehdi_ebay","sarah.etsy","lucas.v","anais_k"]
+PSEUDOS = ["Kaïs_77","lunarix","xX_Maël_Xx","Zéphyr 🔥","naya.shop","Aleex_ツ","TomTom93","Sacha_fbr","ghostly ♡","yoann_ebay",
+ "Mia ⚡","Rafael_09","nxtlvl","Dylan.p","Louis.m","Capucine🌸","enzo_off","Rémi_14","Zayn ✨","kylian.drop",
+ "𝓜𝓪𝓷𝓸𝓼","Hugo_s","n0ah","Adam.bzh","Ilyes_ᴾᴿᴼ","swan_13","lenny-vnt","Maddie 🦋","ArthurLB","Jade.resell",
+ "tiago_92","Océane_k","Noé.D","wassim_off","R0main","Lola ✦","baptiste.pro","Eliott_77","Yann_k","Nael_m",
+ "Sofiane.v","clara_drop","Gabin 🔥","mathis__","Ambre.sells","lorenzo_x","Timéo_06","Kenzo_dls","alix.shop","OlivierB"]
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 BRAND = {"etsy": ("Etsy", 0xF1641E), "ebay": ("eBay", 0x0064D2)}
 STATE = "sent.json"
@@ -20,16 +23,32 @@ def plan_for(day):
     r = random.Random(day.isoformat())
     total = r.randint(MIN_SALES, MAX_SALES)
     share_etsy = r.uniform(0.35, 0.45) if r.random() < 0.5 else r.uniform(0.55, 0.65)  # un côté domine
-    sales = []
+    sales, used = [], set()
+    def new_amount():
+        while True:
+            euros = r.randint(15, 129)
+            cents = r.choice([90, 99, 50, 80, 95]) if r.random() < 0.4 else r.randint(1, 99)
+            a = round(euros + cents / 100, 2)
+            if a not in used:
+                used.add(a); return a
+    cast = r.sample(PSEUDOS, r.randint(22, 32))
+    buyers = [{"pseudo": p, "side": "etsy" if r.random() < share_etsy else "ebay",
+               "w": r.choice([1, 1, 1, 2, 3])} for p in cast]
     for i in range(total):
         minute = r.randint(DAY_START * 60, DAY_END * 60 - 1)
         t = dt.datetime.combine(day, dt.time(minute // 60, minute % 60), TZ)
-        side = "etsy" if r.random() < share_etsy else "ebay"
-        sales.append({"id": f"{day}-{i}", "time": t, "side": side,
-                      "pseudo": r.choice(PSEUDOS), "amount": r.choice(AMOUNTS)})
+        b = r.choices(buyers, weights=[x["w"] for x in buyers])[0]
+        sales.append({"id": f"{day}-{i}", "time": t, "side": b["side"],
+                      "pseudo": b["pseudo"], "amount": new_amount()})
     return sorted(sales, key=lambda s: s["time"])
 
+def image_name(p):
+    import unicodedata
+    n = "".join(c for c in unicodedata.normalize("NFKD", p) if ord(c) < 0x250 and not unicodedata.combining(c))
+    return n.strip() or "membre"
+
 def make_image(side, amount, pseudo):
+    pseudo = image_name(pseudo)
     from PIL import ImageFilter
     bg = Image.open(f"assets/bg_{side}.jpg").convert("RGBA")
     f = lambda s: ImageFont.truetype(FONT, s)
@@ -79,7 +98,7 @@ def send(s, now):
              "description": f"**{s['pseudo']}** vient de conclure une vente ! 🔥\n*{name}*",
              "color": color, "image": {"url": "attachment://vente.png"},
              "fields": [{"name": "📅 Date", "value": now.strftime("%Y-%m-%d")}],
-             "footer": {"text": f"🚀 Toi aussi tu veux vendre comme ça ? Rejoins Nova Club • {s['time'].strftime('%H:%M')}"}}
+             "footer": {"text": f"🚀 Toi aussi tu veux vendre comme ça ? Rejoins Nova Club • {now.strftime('%H:%M')}"}}
     img = make_image(s["side"], s["amount"], s["pseudo"])
     r = requests.post(WEBHOOK, data={"payload_json": json.dumps({"username": "Nova Ventes", "embeds": [embed]})},
                       files={"file": ("vente.png", img, "image/png")}, timeout=30)
