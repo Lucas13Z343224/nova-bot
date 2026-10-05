@@ -26,9 +26,15 @@ def plan_for(day):
     total = r.randint(MIN_SALES, MAX_SALES)
     share_etsy = r.uniform(0.42, 0.48) if r.random() < 0.5 else r.uniform(0.52, 0.58)  # un côté domine, de peu
     sales, used = [], set()
-    def new_amount():
+    def new_amount(side):
         while True:
-            euros = r.randint(15, 129)
+            if side == "etsy":                        # Etsy : plus cher, souvent 300-400 €, rarement jusqu'à 1000 €
+                roll = r.random()
+                if roll < 0.62:   euros = int(min(max(r.gauss(350, 50), 250), 470))
+                elif roll < 0.92: euros = r.randint(50, 250)
+                else:             euros = int(r.triangular(500, 1000, 550))
+            else:                                     # eBay : montants plus bas
+                euros = r.randint(15, 129)
             cents = r.choice([90, 99, 50, 80, 95]) if r.random() < 0.4 else r.randint(1, 99)
             a = round(euros + cents / 100, 2)
             if a not in used:
@@ -51,7 +57,7 @@ def plan_for(day):
         b = r.choices(pool, weights=[x["w"] for x in pool])[0]
         last.append(b["side"])
         sales.append({"id": f"{day}-{i}", "time": t, "side": b["side"],
-                      "pseudo": b["pseudo"], "amount": new_amount()})
+                      "pseudo": b["pseudo"], "amount": new_amount(b["side"])})
     return sales
 
 def image_name(p):
@@ -75,15 +81,18 @@ def make_image(side, amount, pseudo):
     bg.alpha_composite(logo, (55, 45))
     d = ImageDraw.Draw(bg)
     lab, lpos, lf = "NOUVELLE VENTE D'UN MEMBRE", (58, 203), f(24)
-    for blur, alpha in ((12, 255), (5, 200)):
+    for blur, alpha in ((6, 200), (3, 160)):
         g = Image.new("RGBA", bg.size, (0, 0, 0, 0))
         ImageDraw.Draw(g).text(lpos, lab, font=lf, fill=(255, 106, 19, alpha))
         bg.alpha_composite(g.filter(ImageFilter.GaussianBlur(blur)))
     ImageDraw.Draw(bg).text(lpos, lab, font=lf, fill=(255, 140, 50, 255))
     # prix : lueur puis texte blanc net, sans contour
     txt = f"{amount:.2f}".replace(".", ",") + " €"
-    pos, font = (55, 250), f(150)
-    for blur, col, alpha in ((46, (255, 255, 255), 150), (22, (255, 255, 255), 230), (8, (255, 255, 255), 255)):
+    size = 150
+    while ImageDraw.Draw(bg).textlength(txt, font=f(size)) > 600 and size > 90:
+        size -= 6                                   # les montants à 3 chiffres rétrécissent un peu
+    pos, font = (55, 250 + (150 - size) // 2), f(size)
+    for blur, col, alpha in ((16, (255, 255, 255), 110), (6, (255, 255, 255), 170)):
         g = Image.new("RGBA", bg.size, (0, 0, 0, 0))
         ImageDraw.Draw(g).text(pos, txt, font=font, fill=col + (alpha,))
         bg.alpha_composite(g.filter(ImageFilter.GaussianBlur(blur)))
@@ -112,7 +121,7 @@ def send(s, now):
              "fields": [{"name": "📅 Date", "value": now.strftime("%Y-%m-%d")}],
              "footer": {"text": f"🚀 Toi aussi tu veux vendre comme ça ? Rejoins Nova Club • {now.strftime('%H:%M')}"}}
     img = make_image(s["side"], s["amount"], s["pseudo"])
-    r = requests.post(WEBHOOK, data={"payload_json": json.dumps({"username": "Nova Ventes", "embeds": [embed]})},
+    r = requests.post(WEBHOOK, data={"payload_json": json.dumps({"username": "Nova Autopilot", "embeds": [embed]})},
                       files={"file": ("vente.png", img, "image/png")}, timeout=30)
     r.raise_for_status()
 
