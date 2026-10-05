@@ -24,7 +24,7 @@ def plan_for(day):
     """Planning du jour, identique à chaque exécution (graine = date)."""
     r = random.Random(day.isoformat())
     total = r.randint(MIN_SALES, MAX_SALES)
-    share_etsy = r.uniform(0.35, 0.45) if r.random() < 0.5 else r.uniform(0.55, 0.65)  # un côté domine
+    share_etsy = r.uniform(0.42, 0.48) if r.random() < 0.5 else r.uniform(0.52, 0.58)  # un côté domine, de peu
     sales, used = [], set()
     def new_amount():
         while True:
@@ -34,15 +34,25 @@ def plan_for(day):
             if a not in used:
                 used.add(a); return a
     cast = r.sample(PSEUDOS, r.randint(22, 32))
-    buyers = [{"pseudo": p, "side": "etsy" if r.random() < share_etsy else "ebay",
-               "w": r.choice([1, 1, 1, 2, 3])} for p in cast]
-    for i in range(total):
-        minute = r.randint(DAY_START * 60, DAY_END * 60 - 1)
+    buyers, we, wb = [], 0, 0
+    for p in cast:                                   # répartition équilibrée des acheteurs entre Etsy et eBay
+        w = r.choice([1, 1, 1, 2, 3])
+        side = "etsy" if we / max(we + wb, 1) < share_etsy else "ebay"
+        if side == "etsy": we += w
+        else: wb += w
+        buyers.append({"pseudo": p, "side": side, "w": w})
+    times = sorted(r.randint(DAY_START * 60, DAY_END * 60 - 1) for _ in range(total))
+    last = []
+    for i, minute in enumerate(times):
         t = dt.datetime.combine(day, dt.time(minute // 60, minute % 60), TZ)
-        b = r.choices(buyers, weights=[x["w"] for x in buyers])[0]
+        pool = buyers
+        if len(last) >= 2 and last[-1] == last[-2]:  # pas plus de 2 ventes de suite du même côté
+            pool = [x for x in buyers if x["side"] != last[-1]]
+        b = r.choices(pool, weights=[x["w"] for x in pool])[0]
+        last.append(b["side"])
         sales.append({"id": f"{day}-{i}", "time": t, "side": b["side"],
                       "pseudo": b["pseudo"], "amount": new_amount()})
-    return sorted(sales, key=lambda s: s["time"])
+    return sales
 
 def image_name(p):
     import unicodedata
