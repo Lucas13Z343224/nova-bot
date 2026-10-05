@@ -7,7 +7,7 @@ TZ = ZoneInfo("Europe/Paris")
 WEBHOOK = os.environ["DISCORD_WEBHOOK_URL"]
 MODE = os.environ.get("MODE", "test")          # test = ventes simulées
 MIN_SALES, MAX_SALES = 40, 60
-DAY_START, DAY_END = 8, 23                      # heures d'activité
+DAY_START, DAY_END = 0, 24                      # heures d'activité
 AMOUNTS = [19, 24, 29, 30, 35, 39, 45, 49, 55, 59, 65, 79, 89, 99]
 PSEUDOS = ["Kaïs_77","lunarix","xX_Maël_Xx","Zéphyr 🔥","naya.shop","Aleex_ツ","TomTom93","Sacha_fbr","ghostly ♡","yoann_ebay",
  "Mia ⚡","Rafael_09","nxtlvl","Dylan.p","Louis.m","Capucine🌸","enzo_off","Rémi_14","Zayn ✨","kylian.drop",
@@ -17,6 +17,7 @@ PSEUDOS = ["Kaïs_77","lunarix","xX_Maël_Xx","Zéphyr 🔥","naya.shop","Aleex_
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 BRAND = {"etsy": ("Etsy", 0xF1641E), "ebay": ("eBay", 0x0064D2)}
 STATE = "sent.json"
+MAX_PER_RUN = 2                                 # jamais en paquet : 2 messages max par lancement
 
 def plan_for(day):
     """Planning du jour, identique à chaque exécution (graine = date)."""
@@ -109,11 +110,16 @@ def main():
     state = json.load(open(STATE)) if os.path.exists(STATE) else {}
     today = now.date().isoformat()
     state = {k: v for k, v in state.items() if k.startswith(today)}   # purge anciens jours
+    sent_now = 0
     for s in plan_for(now.date()):
         if s["time"] <= now and s["id"] not in state:
-            if (now - s["time"]).total_seconds() > 3 * 3600:   # trop vieux, on saute
+            if (now - s["time"]).total_seconds() > 6 * 3600:   # trop vieux, on saute
                 state[s["id"]] = "skipped"; continue
-            send(s, now); state[s["id"]] = "sent"; print("envoyé", s["id"])
+            if sent_now >= MAX_PER_RUN:
+                break                                          # le reste partira au prochain lancement
+            if sent_now:
+                import time; time.sleep(random.uniform(8, 20))  # petite pause entre 2 messages
+            send(s, dt.datetime.now(TZ)); state[s["id"]] = "sent"; sent_now += 1; print("envoyé", s["id"])
     json.dump(state, open(STATE, "w"))
 
 if __name__ == "__main__":
