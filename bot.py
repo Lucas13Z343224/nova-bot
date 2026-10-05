@@ -17,7 +17,7 @@ PSEUDOS = ["Kaïs_77","lunarix","xX_Maël_Xx","Zéphyr 🔥","naya.shop","Aleex_
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 BRAND = {"etsy": ("Etsy", 0xF1641E), "ebay": ("eBay", 0x0064D2)}
 STATE = "sent.json"
-MAX_PER_RUN = 2                                 # jamais en paquet : 2 messages max par lancement
+MAX_PER_RUN = 1                                 # 1 seul message par lancement : jamais deux d'un coup
 
 def plan_for(day):
     """Planning du jour, identique à chaque exécution (graine = date)."""
