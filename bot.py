@@ -114,7 +114,6 @@ def make_image(side, amount, pseudo):
 
 def send(s, now):
     name, color = BRAND[s["side"]]
-    label = "[TEST] " if MODE == "test" else ""
     embed = {"title": f"🎉 {label}Nouvelle vente d'un membre Nova Club",
              "description": f"**{s['pseudo']}** vient de conclure une vente ! 🔥\n*{name}*",
              "color": color, "image": {"url": "attachment://vente.png"},
